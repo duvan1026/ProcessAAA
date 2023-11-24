@@ -16,29 +16,20 @@ namespace TripleAAA
     {
         #region Constantes
 
-        const string tessdataPath = @"C:\Program Files (x86)\Tesseract-OCR\tessdata";
-        const string language = "spa";
-        const double dpi = 96.0;                                  // Resolución estándar de pantalla
-
-        const string inputFile = @"C:\Users\duvan.castro\Desktop\TestPDFText\CAJA.30"; // Reemplaza con la ruta de tu carpeta
+        // TODO: Reemplaza con la ruta de tu carpeta de la capa visual
+        const string inputFile = @"C:\Users\duvan.castro\Desktop\TestPDFText\CAJA.30"; 
         const string outputFile = @"C:\Users\duvan.castro\Desktop\TestPDFText\CAJA.30\OutputData";
 
-
-        //const string nameDirectoryDestination = "Data.Process";
         const string inputFormat = "*.tif";
         const string outputFormat = ".pdf";
-        const string outputInformationFormat = ".txt";
         const string filterSuffix = ".#";
         const string delimiter = "-";
-        const string informationName = "informacion";
 
         private static string nameFolderDestination = null;     // Nombre carpeta de destino
         private static string boxFolderName = null;             // Nombre de la carpeta principal (Caja)
         private static string bookFolderName = null;            // Nombre de la carpeta secundaria (Libro)
         private static string expedienteFolderName = null;      // Nombre de la carpeta expediente (Expediente)
         private static string imageFolderName = null;           // Nombre de la carpeta Imagen (Image)
-
-
 
         #endregion
 
@@ -48,7 +39,7 @@ namespace TripleAAA
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             // TODO: Agregar validacion si la carpeta ya fue procesada ".#", si ya lo fue proceder a enviar mensaje indicando que esta carpeta ya fue procesada y no puede realizarse el proceso
-            boxFolderName = Path.GetFileName(inputFile);  // Nombre Carpeta de Caja
+            boxFolderName = Path.GetFileName(inputFile);                             // Nombre Carpeta de Caja
             nameFolderDestination = Path.GetFileName(outputFile);
 
             // Crear el directorio de destino para el archivo de salida
@@ -61,7 +52,7 @@ namespace TripleAAA
                                             .Where(dir => !dir.Name.EndsWith(filterSuffix) && dir.Name != nameFolderDestination))
             {
 
-                bookFolderName = Path.GetFileName(currentBookFolder.FullName);  // Nombre del libro
+                bookFolderName = Path.GetFileName(currentBookFolder.FullName);       // Nombre del libro
 
                 // Filtrar y recorrer los Expedientes cumplen con la condición
                 DirectoryInfo inputBookDirectory = new DirectoryInfo(currentBookFolder.FullName);                
@@ -103,25 +94,14 @@ namespace TripleAAA
 
                 foreach (string tiffFile in tiffFiles)
                 {
+                    // TODO: volver mas eficiencie el sistema si se activan las dos opciones
                     // TODO: OPCION 1:
                     // Recorre todos los files y guarda uno por 1
                     imageFolderName = Path.GetFileNameWithoutExtension(tiffFile);  // Nombre Carpeta de Caja
                     string outputPath = GetPdfOutputPath(destinationRoute);
                     PDFService.ConvertTiffToPdf(tiffFile, outputPath);
-                    // Crear o abrir el archivo para escritura
-                    
-                    //string imageName = Path.GetFileName(outputPath);    // Obtener el nombre del archivo
-                    //DateTime fechaLog = DateTime.Now;                   // Obtener la fecha actual
-                    //string tamañoFormateado = GetFormattedSize(outputPath);
-                    // Escribir información en el archivo de texto
                     WriteInformationToFile(outputPath, outputInformationPath);
 
-                    //long tamañoEnBytes = ObtenerTamañoArchivo(outputPath);
-                    //string tamañoFormateado = FormatearTamañoArchivo(tamañoEnBytes);// Formatear el tamaño del archivo
-                    //using (StreamWriter sw = File.AppendText(outputInformationPath))
-                    //{                        
-                    //    sw.WriteLine($"{imageName}\t{fechaLog}\t{tamañoFormateado}"); // Escribir la información en el archivo
-                    //}
 
                     // TODO: OPCION 2:
                     // Recorre todos los files y guarda uno por 1 en la ruta Temp para construir el PDF con todos
@@ -129,22 +109,25 @@ namespace TripleAAA
                     string tempPath = GetPdfOutputPath(tempFolderPath);
                     PDFService.ConvertTiffToPdf(tiffFile, tempPath);
                     AddPagesFromTiffToPdf(tempPath, outputDocument);
-                    File.Delete(tempPath);                                // Eliminar la imagen en la ruta temp
+                    File.Delete(tempPath);                                
                 }
                 SavePdfDocument(outputDocument, outputnamePDFTotal);
                 WriteInformationToFile(outputnamePDFTotal, outputInformationPath);
 
-                // TODO: Cambiar nombre d ela carpeta  aña cual se extrajo la informacion
+                // TODO: Cambiar nombre de la carpeta  aña cual se extrajo la informacion
             }
-
         }
 
-        // Escribir información en el archivo de texto
-        static void WriteInformationToFile(string outputPath, string outputInformationPath)
+        /// <summary>
+        /// Escribe información en un archivo de texto.
+        /// </summary>
+        /// <param name="inputFilePath">Ruta del archivo de entrada.</param>
+        /// <param name="outputInformationPath">Ruta del archivo de salida para la información.</param>
+        static void WriteInformationToFile(string inputFilePath, string outputInformationPath)
         {
-            string imageName = Path.GetFileName(outputPath);    // Obtener el nombre del archivo
-            DateTime fechaLog = DateTime.Now;                   // Obtener la fecha actual
-            string tamañoFormateado = GetFormattedSize(outputPath);
+            string imageName = Path.GetFileName(inputFilePath);                 // Obtener el nombre del archivo
+            DateTime fechaLog = DateTime.Now;                                   // Obtener la fecha actual
+            string tamañoFormateado = GetFormattedSize(inputFilePath);          // Obtiene el tamaño del archivo 
 
             using (StreamWriter sw = File.AppendText(outputInformationPath))
             {
@@ -152,29 +135,31 @@ namespace TripleAAA
             }
         }
 
-        // Formatear el tamaño del archivo en KB o MB
-        static string GetFormattedSize(string outputPath)
+        /// <summary>
+        /// Formatea el tamaño del archivo en KB o MB.
+        /// </summary>
+        /// <param name="filePath">Ruta del archivo.</param>
+        /// <returns>Una cadena que representa el tamaño formateado del archivo.</returns>
+        static string GetFormattedSize(string filePath)
         {
-            long tamañoEnBytes = ObtenerTamañoArchivo(outputPath);
+            long fileSizeInBytes = GetFileSize(filePath);
 
             const long kilobyte = 1024;
             const long megabyte = kilobyte * 1024;
 
-            double tamañoFormateado;
+            double formattedSize;
 
-            if (tamañoEnBytes >= megabyte)
+            if (fileSizeInBytes >= megabyte)
             {
-                tamañoFormateado = Math.Round((double)tamañoEnBytes / megabyte, 1);
-                return $"{tamañoFormateado} MB";
+                formattedSize = Math.Round((double)fileSizeInBytes / megabyte, 1);
+                return $"{formattedSize} MB";
             }
             else
             {
-                tamañoFormateado = Math.Round((double)tamañoEnBytes / kilobyte, 1);
-                return $"{tamañoFormateado} KB";
+                formattedSize = Math.Round((double)fileSizeInBytes / kilobyte, 1);
+                return $"{formattedSize} KB";
             }
         }
-
-
 
         /// <summary>
         /// Agrega las páginas de un archivo TIFF a un documento PDF de destino.
@@ -194,34 +179,15 @@ namespace TripleAAA
             }
         }
 
-        static long ObtenerTamañoArchivo(string rutaArchivo)
-        {
-            // Crear un objeto FileInfo
-            FileInfo fileInfo = new FileInfo(rutaArchivo);
-
-            // Obtener el tamaño del archivo en bytes
-            return fileInfo.Length;
-        }
-
-        static string FormatearTamañoArchivo(long tamañoEnBytes)
-        {
-            const long kilobyte = 1024;
-            const long megabyte = kilobyte * 1024;
-
-            double tamañoFormateado;
-
-            if (tamañoEnBytes >= megabyte)
-            {
-                // Convertir a megabytes con un decimal
-                tamañoFormateado = Math.Round((double)tamañoEnBytes / megabyte, 1);
-                return $"{tamañoFormateado} MB";
-            }
-            else
-            {
-                // Convertir a kilobytes con un decimal
-                tamañoFormateado = Math.Round((double)tamañoEnBytes / kilobyte, 1);
-                return $"{tamañoFormateado} KB";
-            }
+        /// <summary>
+        /// Obtiene el tamaño del archivo en bytes.
+        /// </summary>
+        /// <param name="filePath">Ruta del archivo.</param>
+        /// <returns>El tamaño del archivo en bytes.</returns>
+        static long GetFileSize(string filePath)
+        {            
+            FileInfo fileInfo = new FileInfo(filePath);  // Crear un objeto FileInfo
+            return fileInfo.Length;                      // Obtener el tamaño del archivo en bytes
         }
 
         /// <summary>
@@ -243,15 +209,24 @@ namespace TripleAAA
             return new PdfDocument();
         }
 
+        /// <summary>
+        /// Obtiene la ruta completa para un archivo de texto de salida.
+        /// </summary>
+        /// <param name="destinationRoute">Ruta de destino.</param>
+        /// <returns>Ruta completa del archivo de texto de salida.</returns>
         static string GetTXTOutputPath(string destinationRoute)
         {
-            return Path.Combine(destinationRoute, informationName + outputInformationFormat);
+            string informationName = "informacion";
+            string outputInformationFormat = ".txt"; 
+
+            return Path.Combine(destinationRoute, $"{informationName}{outputInformationFormat}");
         }
 
         /// <summary>
-        /// Obtiene la ruta de salida del archivo PDF basada en la ruta de destino y el archivo TIFF de entrada.
+        /// Obtiene la ruta completa para el archivo PDF de salida basada en la ruta de destino y la estructura de carpetas.
         /// </summary>
-        /// <returns>La ruta del archivo PDF de salida.</returns>
+        /// <param name="destinationRoute">Ruta de destino.</param>
+        /// <returns>Ruta completa del archivo PDF de salida.</returns>
         static string GetPdfOutputPath(string destinationRoute)
         {
             return Path.Combine(destinationRoute, bookFolderName + delimiter + 
@@ -260,10 +235,10 @@ namespace TripleAAA
         }
 
         /// <summary>
-        /// Obtiene el nombre del archivo PDF de salida basado en el directorio de destino.
+        /// Obtiene el nombre completo del archivo PDF de salida basado en el directorio de destino.
         /// </summary>
         /// <param name="destinationRoute">El directorio de destino para el archivo PDF.</param>
-        /// <returns>El nombre del archivo PDF de salida.</returns>
+        /// <returns>El nombre completo del archivo PDF de salida.</returns>
         static string GetOutputPdfName(string destinationRoute)
         {
             return Path.Combine(destinationRoute, bookFolderName + delimiter +
